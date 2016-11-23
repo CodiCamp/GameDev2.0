@@ -41,7 +41,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>$(SolutionDir)\ex5\include;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)\ex5\include;$(SolutionDir)\ex5\;$(IncludePath)</IncludePath>
     <LibraryPath>$(SolutionDir)\ex5\Win32-visualstudio;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -80,6 +80,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="MyEventReveiver.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="MyEventReceiver.h" />

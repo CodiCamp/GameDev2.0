@@ -16,6 +16,7 @@ using namespace video;
 At first, we let the user select the driver type, then start up the engine, set
 a caption, and get a pointer to the video driver.
 */
+
 int main()
 {
 	s32 rocketAnimFrameSizeW = 55;
@@ -44,26 +45,7 @@ int main()
 	video::ITexture* sun = driver->getTexture("./media/sunAnim.PNG");
 	driver->makeColorKeyTexture(sun, position2d<s32>(0, 0));
 	
-	//create a scene node to manipulate
-	//scene::ISceneNode * node = smgr->addCubeSceneNode();
-	//if (node)
-	//{
-	//	node->setPosition(core::vector3df(5, -30, 30));
-	//	node->setMaterialTexture(0, driver->getTexture("./media/Rocket_spritesheet.png"));
-	//	node->setMaterialFlag(video::EMF_LIGHTING, false);
-	//	node->setScale(vector3df(0.1));
 
-	//	/*scene::ISceneNodeAnimator* anim =
-	//		smgr->createFlyCircleAnimator(core::vector3df(0, 0, 30), 20.0f);
-	//	if (anim)
-	//	{
-	//		node->addAnimator(anim);
-	//		anim->drop();
-	//	}*/
-	//}
-
-	//smgr->addCameraSceneNode();
-	//device->getCursorControl()->setVisible(false);
 
 	int currentColumn = 0;
 	int row = 0;
@@ -72,14 +54,16 @@ int main()
 	u32 lastTime = device->getTimer()->getTime();
 	u32 lastAnimationFrame = device->getTimer()->getTime();
 	u32 lastSunFrame = device->getTimer()->getTime();
+	//"+" is CCW, "-" is CW
+	f32 rotationAngle = 0;
+	
 	int previousFrame = 0;
 
 	int sunFrame = 0;
 
 	f32 MOVEMENT_SPEED = 0.2f;
-
+	
 	position2df RocketPosition(300,300);
-
 
 	while (device->run())
 	{
@@ -92,35 +76,27 @@ int main()
 		//compute how much time has passed since previous frame. If it is > the time between animation frames, curentframe++
 		/* Check if keys W, S, A or D are being held down, and move the
 		sphere node around respectively. */
-//		core::vector3df nodePosition = node->getPosition();
 
-		/*switch (receiver.getKey())
-		{
-		case irr::KEY_KEY_W: 
-			RocketPosition.Y -= MOVEMENT_SPEED * Dt; break;
-		case irr::KEY_KEY_S:
-			RocketPosition.Y += MOVEMENT_SPEED * Dt; break;
-		case irr::KEY_KEY_A: 
-			RocketPosition.X -= MOVEMENT_SPEED * Dt; break;
-		case irr::KEY_KEY_D:
-			RocketPosition.X += MOVEMENT_SPEED * Dt; break;
-		};*/
 
 		if (receiver.IsKeyDown(irr::KEY_KEY_W))
 		{
-			RocketPosition.Y -= (MOVEMENT_SPEED * Dt);
+			
+			//RocketPosition.X -= Dt* f32(cos(rotationAngle));
+			//RocketPosition.Y += Dt* f32(sin(rotationAngle));
 		}
 		if (receiver.IsKeyDown(irr::KEY_KEY_S))
 		{
-			RocketPosition.Y += (MOVEMENT_SPEED * Dt);
+			//RocketPosition.Y += (MOVEMENT_SPEED * Dt);
 		}
 		if (receiver.IsKeyDown(irr::KEY_KEY_A))
 		{
-			RocketPosition.X -= MOVEMENT_SPEED * Dt;
+			//RocketPosition.X -= MOVEMENT_SPEED * Dt;
+			rotationAngle += 0.1f * Dt;
 		}
 		if (receiver.IsKeyDown(irr::KEY_KEY_D))
 		{
-			RocketPosition.X += MOVEMENT_SPEED * Dt;
+			//RocketPosition.X += MOVEMENT_SPEED * Dt;
+			rotationAngle -= 0.1f * Dt;
 		}
 
 //		node->setPosition(nodePosition);
@@ -168,11 +144,13 @@ int main()
 				(sunFrame + 1) * 200, 200), 0,
 				SColor(255, 255, 255, 255), true);
 
-			driver->draw2DImage(rocket,
+			/*driver->draw2DImage(rocket,
 			position2d<s32>((s32)RocketPosition.X, (s32)RocketPosition.Y),
 				rect<s32>(currentColumn * rocketAnimFrameSizeW, row * rocketAnimFrameSizeH,
 				(currentColumn + 1) * rocketAnimFrameSizeW, (row + 1) * rocketAnimFrameSizeH),0,
-				SColor(255, 255, 255, 255), true);
+				SColor(255, 255, 255, 255), true);*/
+			driver->draw2DImage(driver, rocket, rect<s32>(currentColumn * rocketAnimFrameSizeW, row * rocketAnimFrameSizeH,
+				(currentColumn + 1) * rocketAnimFrameSizeW, (row + 1) * rocketAnimFrameSizeH), position2d<s32>((s32)RocketPosition.X, (s32)RocketPosition.Y), vector2d<s32>(RocketPosition.X + rocketAnimFrameSizeW / 2, RocketPosition.Y + rocketAnimFrameSizeH / 2), rotationAngle, vector2df(1, 1), 1, SColor(255, 255, 255, 255));
 		
 		//smgr->addCameraSceneNode();
 		driver->endScene();
