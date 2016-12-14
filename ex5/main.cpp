@@ -1,5 +1,12 @@
 #include <irrlicht.h>
 #include <irrKlang.h>
+#include <ozcollide\ozcollide.h>
+#include <ozcollide\box.h>
+#include <ozcollide\sphere.h>
+
+
+
+
 #include "MyEventReceiver.h"
 //#include <cImage.h>
 using namespace std;
@@ -8,6 +15,7 @@ using namespace irr;
 using namespace core;
 using namespace video;
 using namespace irrklang;
+using namespace ozcollide;
 
 #ifdef _IRR_WINDOWS_
 #pragma comment(lib, "Irrlicht.lib")
@@ -16,10 +24,47 @@ using namespace irrklang;
 #endif
 
 
-/*
-At first, we let the user select the driver type, then start up the engine, set
-a caption, and get a pointer to the video driver.
-*/
+enum states
+{
+	STATE_PATROLLING,
+	STATE_FIRING,
+	STATE_MOVING
+
+} currentState;
+
+double seeDistance = 300.0f;
+
+bool seePlayer(Box *enemyShip, Box *playerShip)
+{
+	double distx = enemyShip->center.x - playerShip->center.x;
+	double disty = enemyShip->center.y - playerShip->center.y;
+	double dist = sqrt(distx*distx + disty*disty);
+
+	if (dist <= seeDistance)
+		return true;
+	return false;
+}
+
+bool moveToPosition(double speed, position2df* enemyPosition, position2df lastPosition)
+{
+	double diffX = lastPosition.X - enemyPosition->X;
+	double diffY = lastPosition.Y - enemyPosition->Y;
+
+	enemyPosition->X += diffX*speed;
+	enemyPosition->Y += diffY*speed;
+
+	if ((diffX >= 10 || diffX <= -10) && (diffY >= 10 || diffY <= -10))
+		return true;
+	return false;
+}
+void drawCollision(Box* box, IVideoDriver* driver)
+{
+	driver->draw2DLine(vector2d<s32>(box->getPoint(0).x, box->getPoint(0).y), vector2d<s32>(box->getPoint(1).x, box->getPoint(1).y), SColor(255, 255, 0, 0));
+	driver->draw2DLine(vector2d<s32>(box->getPoint(1).x, box->getPoint(1).y), vector2d<s32>(box->getPoint(3).x, box->getPoint(3).y), SColor(255, 255, 0, 0));
+	driver->draw2DLine(vector2d<s32>(box->getPoint(2).x, box->getPoint(2).y), vector2d<s32>(box->getPoint(3).x, box->getPoint(3).y), SColor(255, 255, 0, 0));
+	driver->draw2DLine(vector2d<s32>(box->getPoint(0).x, box->getPoint(0).y), vector2d<s32>(box->getPoint(6).x, box->getPoint(6).y), SColor(255, 255, 0, 0));
+	box->~Box();
+}
 void draw2DImageWithRot(IVideoDriver *driver,ITexture* texture,rect<irr::s32> sourceRect, position2d<irr::s32> position, position2d<irr::s32> rotationPoint,f32 rotation,vector2df scale, bool useAlphaChannel, SColor color) {
 
 	// Store and clear the projection matrix
@@ -108,6 +153,9 @@ int main()
 	s32 rocketAnimFrameSizeW = 55;
 	s32 rocketAnimFrameSizeH = 83;
 
+	Box* rocketCollision = new Box();
+	Box* enemyCollision = new Box();
+	
 	//create an instance of the event receiver
 	MyEventReceiver receiver;
 
@@ -136,6 +184,8 @@ int main()
 	
 	video::ITexture* sun = driver->getTexture("./media/sunAnim.PNG");
 	driver->makeColorKeyTexture(sun, position2d<s32>(0, 0));
+
+	video::ITexture* enemy = driver->getTexture("./media/YWing.png");
 	
 
 
@@ -156,8 +206,18 @@ int main()
 	f32 MOVEMENT_SPEED = 0.2f;
 	f32 SPEED_X = 0.0f;
 	f32 SPEED_Y = 0.0f;
-	position2df RocketPosition(300,300);
+	f32 acceeration = 0.0005f;
 	
+	position2df RocketPosition(300,300);
+	position2df lastPosition;
+	position2df *EnemyPosition = new position2df(20, 20);
+
+	bool fire = false;
+
+	currentState = states::STATE_PATROLLING;
+
+
+
 	while (device->run() && !receiver.IsKeyDown(irr::KEY_ESCAPE))
 	{
 		const u32 currentTime = device->getTimer()->getTime();
@@ -180,8 +240,8 @@ int main()
 		f32 normR = (RocketPosition.X*RocketPosition.X + RocketPosition.Y*RocketPosition.Y);
 		if (receiver.IsKeyDown(irr::KEY_KEY_W))
 		{
-			RocketPosition.X -= Dt* f32(sinf(rotationAngle* M_PI / 180.0f));//!!!IN RADIANS
-			RocketPosition.Y -= Dt* f32(cosf(rotationAngle* M_PI / 180.0f));//!!!IN RADIANS
+			RocketPosition.X -=	 Dt* f32(sinf(rotationAngle* M_PI / 180.0f));//!!!IN RADIANS
+			RocketPosition.Y -=  Dt* f32(cosf(rotationAngle* M_PI / 180.0f));//!!!IN RADIANS
 			if (!soundEngine->isCurrentlyPlaying("./media/explosion.wav"))//check if the sound is not currently playing to avoid sound overlap
 				soundEngine->play2D("./media/explosion.wav", false);
 		}
@@ -199,8 +259,12 @@ int main()
 			//RocketPosition.X += MOVEMENT_SPEED * Dt;
 			rotationAngle -= 0.1f * Dt;
 		}
+		
+		rocketCollision->setFromPoints(Vec3f(RocketPosition.X, RocketPosition.Y, 0),
+			Vec3f(RocketPosition.X + rocketAnimFrameSizeW, RocketPosition.Y + rocketAnimFrameSizeH, 0));
 
-//		node->setPosition(nodePosition);
+		enemyCollision->setFromPoints(Vec3f(EnemyPosition->X, EnemyPosition->Y, 0),
+			Vec3f(EnemyPosition->X + 128.0f, EnemyPosition->Y + 128.0f, 0));
 		
 		if (currentTime - lastAnimationFrame >= (1000/60))
 		{
@@ -229,7 +293,45 @@ int main()
 		/* Check if keys W, S, A or D are being held down, and move the
 		sphere node around respectively. */
 		
-	
+		switch (currentState)
+		{
+		case STATE_PATROLLING:
+			if (seePlayer(enemyCollision, rocketCollision))
+			{
+				currentState = STATE_FIRING;
+			}break;
+		case STATE_FIRING:
+			if (!seePlayer(enemyCollision, rocketCollision))
+			{
+				fire = false;
+				lastPosition = RocketPosition;
+				currentState = STATE_MOVING;
+				//TODO function to move to last known player position
+			}
+			else
+			{
+				fire = true;
+			}break;
+		case STATE_MOVING:
+		{
+			if (seePlayer(enemyCollision, rocketCollision))
+				{
+					currentState = STATE_FIRING;
+					fire = true;
+				}
+
+			else
+			{
+				fire = false;
+				if (!moveToPosition(0.0005*Dt, EnemyPosition, lastPosition))
+				{
+					currentState = STATE_PATROLLING;
+				}
+			}
+		}
+			break;
+
+		}
 
 		driver->beginScene(true, true, SColor(255, 113, 113, 133));
 
@@ -244,17 +346,24 @@ int main()
 				rect<s32>(sunFrame * 200, 0,
 				(sunFrame + 1) * 200, 200), 0,
 				SColor(255, 255, 255, 255), true);
+			driver->draw2DImage(enemy,
+				position2d<s32>((s32)EnemyPosition->X, (s32)EnemyPosition->Y),
+				rect<s32>(0, 0,
+				128.0f, 128.0f), 0,
+				SColor(255, 255, 255, 255), true);
 
-			/*driver->draw2DImage(rocket,
-			position2d<s32>((s32)RocketPosition.X, (s32)RocketPosition.Y),
-				rect<s32>(currentColumn * rocketAnimFrameSizeW, row * rocketAnimFrameSizeH,
-				(currentColumn + 1) * rocketAnimFrameSizeW, (row + 1) * rocketAnimFrameSizeH),0,
-				SColor(255, 255, 255, 255), true);*/
+			drawCollision(rocketCollision, driver);
+			drawCollision(enemyCollision, driver);
+
 			draw2DImageWithRot(driver, rocket, rect<s32>(currentColumn * rocketAnimFrameSizeW, row * rocketAnimFrameSizeH,
 				(currentColumn + 1) * rocketAnimFrameSizeW, (row + 1) * rocketAnimFrameSizeH), position2d<s32>((s32)RocketPosition.X, (s32)RocketPosition.Y), vector2d<s32>(RocketPosition.X + rocketAnimFrameSizeW / 2, RocketPosition.Y + rocketAnimFrameSizeH / 2), rotationAngle, vector2df(1, 1), 1, SColor(255, 255, 255, 255));
-		
-		//smgr->addCameraSceneNode();
-		driver->endScene();
+				
+			if (fire)
+			{
+				driver->draw2DLine(vector2d<s32>(enemyCollision->center.x, enemyCollision->center.y), vector2d<s32>(rocketCollision->center.x, rocketCollision->center.y), SColor(255, 250, 250, 0));
+			}
+			driver->endScene();
+
 
 		int fps = driver->getFPS();
 
@@ -262,6 +371,8 @@ int main()
 		{
 			core::stringw stingFPS = L"FPS: ";
 			stingFPS += fps;
+			stingFPS += L" / Current State: ";
+			stingFPS += currentState;
 			device->setWindowCaption(stingFPS.c_str());
 			LastFps = fps;
 		}

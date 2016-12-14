@@ -41,7 +41,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>$(SolutionDir)\ex5\include;$(SolutionDir)\ex5\;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)\ex5\include;$(SolutionDir)\ex5\;$(SolutionDir)\ex5\collizionLib\include;$(SolutionDir)\ex5\Box2D-master\Box2D\;$(IncludePath)</IncludePath>
     <LibraryPath>$(SolutionDir)\ex5\Win32-visualstudio;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
