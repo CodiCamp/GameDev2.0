@@ -44,7 +44,17 @@ bool seePlayer(Box *enemyShip, Box *playerShip)
 		return true;
 	return false;
 }
-
+f32 angleToFacePlayer(Box* enemyShip, Box* playerShip)
+{
+	f32 i = 0;
+	double distx = playerShip->center.x - enemyShip->center.x;
+	double disty = playerShip->center.y - enemyShip->center.y;
+	i = acos(disty / (sqrt(distx*distx + disty*disty))) * 180 / PI;
+	if (distx > 0)
+		return i;
+	if (distx < 0)
+		return -i + 360;
+}
 bool moveToPosition(double speed, position2df* enemyPosition, position2df lastPosition)
 {
 	double diffX = lastPosition.X - enemyPosition->X;
@@ -346,17 +356,22 @@ int main()
 				rect<s32>(sunFrame * 200, 0,
 				(sunFrame + 1) * 200, 200), 0,
 				SColor(255, 255, 255, 255), true);
-			driver->draw2DImage(enemy,
+			/*driver->draw2DImage(enemy,
 				position2d<s32>((s32)EnemyPosition->X, (s32)EnemyPosition->Y),
 				rect<s32>(0, 0,
 				128.0f, 128.0f), 0,
-				SColor(255, 255, 255, 255), true);
+				SColor(255, 255, 255, 255), true);*/
+			draw2DImageWithRot(driver, enemy, rect<s32>(0, 0, 128, 128), 
+				position2d<s32>((s32)EnemyPosition->X, (s32)EnemyPosition->Y), 
+				vector2d<s32>(EnemyPosition->X + 64, EnemyPosition->Y + 64), angleToFacePlayer(enemyCollision,rocketCollision), vector2df(1, 1), 1, SColor(255, 255, 255, 255));
 
 			drawCollision(rocketCollision, driver);
 			drawCollision(enemyCollision, driver);
 
 			draw2DImageWithRot(driver, rocket, rect<s32>(currentColumn * rocketAnimFrameSizeW, row * rocketAnimFrameSizeH,
-				(currentColumn + 1) * rocketAnimFrameSizeW, (row + 1) * rocketAnimFrameSizeH), position2d<s32>((s32)RocketPosition.X, (s32)RocketPosition.Y), vector2d<s32>(RocketPosition.X + rocketAnimFrameSizeW / 2, RocketPosition.Y + rocketAnimFrameSizeH / 2), rotationAngle, vector2df(1, 1), 1, SColor(255, 255, 255, 255));
+				(currentColumn + 1) * rocketAnimFrameSizeW, (row + 1) * rocketAnimFrameSizeH), 
+				position2d<s32>((s32)RocketPosition.X, (s32)RocketPosition.Y), 
+				vector2d<s32>(RocketPosition.X + rocketAnimFrameSizeW / 2, RocketPosition.Y + rocketAnimFrameSizeH / 2), rotationAngle, vector2df(1, 1), 1, SColor(255, 255, 255, 255));
 				
 			if (fire)
 			{
